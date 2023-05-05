@@ -1,3 +1,3 @@
-module timing
+module teatime
 
 go 1.20
