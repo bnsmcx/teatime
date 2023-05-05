@@ -24,7 +24,7 @@ var (
 		"1/5 -- JWT Signing Key:",
 		"2/5 -- " + secret,
 		"3/5 -- Add a claim named 'handle' containing your discord handle to the JWT payload.",
-		"4/5 -- Put the JWT in a Header called 'jwt'",
+		"4/5 -- Put the JWT in a Header called 'Jwt'",
 		"5/5 -- Scoreboard endpoint: /scoreboard/add",
 	}
 )
@@ -39,6 +39,7 @@ func main() {
 	go timingService(&mutex, &index)
 
 	// Setup the server
+	http.HandleFunc("/", handleHome)
 	http.HandleFunc("/instructions", handleInstructions)
 	http.HandleFunc("/scoreboard", handleScoreboard)
 	http.HandleFunc("/scoreboard/add", handleScoreboardAdd)
@@ -49,11 +50,61 @@ func main() {
 	}
 }
 
+func handleHome(w http.ResponseWriter, r *http.Request) {
+	message := `
+		This server, like most servers, operates thanks to the diligence of tiny green 
+		elves shuffling papers about inside a bleak industrial datacenter.  Today the 
+		mood is a bit brighter as they are throwing a tea party.  
+
+		Please do be patient with them as they may be a bit slow handling your requests.
+		Rest assured they will do all they can to help you on your journey as lulls in
+		the party allow them. Today may be a day of leisure but they still strongly
+		believe in doing things the right way, one thing following another.
+
+		Your challenge is to add your name to the /scoreboard.  
+		Your scope is this domain.`
+	w.Write([]byte(message))
+	log.Println("served /: ", r.RemoteAddr)
+}
+
+func handleInstructions(w http.ResponseWriter, r *http.Request) {
+	if !mutex.TryLock() {
+		w.WriteHeader(http.StatusTeapot)
+		return
+	}
+	if index > 0 {
+		v, ok := r.Header["Timing-Auth"]
+		if !ok || !validHeader(v) {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Missing or invalid 'Timing-Auth' header."))
+			log.Println("invalid /instructions request: ", r.RemoteAddr)
+			mutex.Unlock()
+			return
+		}
+	}
+	w.Write(buildResponseData())
+	log.Println("valid /instructions request: ", r.RemoteAddr)
+	mutex.Unlock()
+}
+
+func handleScoreboard(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("SCOREBOARD\n"))
+	if len(scoreboard) < 1 {
+		w.Write([]byte("\nNobody has solved the challenge yet."))
+	}
+	for k, v := range scoreboard {
+		entry := fmt.Sprintf("%s - %s\n", k, v)
+		w.Write([]byte("\n" + entry))
+	}
+	log.Println("served /scoreboard: ", r.RemoteAddr)
+}
+
 func handleScoreboardAdd(w http.ResponseWriter, r *http.Request) {
 	token, ok := r.Header["Jwt"]
 	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Did you read the '/instructions'?"))
+		log.Println("invalid /scoreboard/add: ", r.RemoteAddr)
 		return
 	}
 
@@ -61,9 +112,11 @@ func handleScoreboardAdd(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Did you read the '/instructions'?"))
+		log.Println("invalid /scoreboard/add: ", r.RemoteAddr)
 		return
 	}
 	scoreboard[username] = time.Now().Format(time.RFC850)
+	log.Println("valid /scoreboard/add: ", r.RemoteAddr)
 }
 
 func getContestantUsername(token string) (string, error) {
@@ -121,35 +174,6 @@ func createSignature(encodedHeader string, encodedPayload string, secret string)
 	return base64.RawURLEncoding.EncodeToString(signature)
 }
 
-func handleScoreboard(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("SCOREBOARD\n"))
-	if len(scoreboard) < 1 {
-		w.Write([]byte("\nNobody has solved the challenge yet."))
-	}
-	for k, v := range scoreboard {
-		entry := fmt.Sprintf("%s - %s\n", k, v)
-		w.Write([]byte("\n" + entry))
-	}
-}
-
-func handleInstructions(w http.ResponseWriter, r *http.Request) {
-	if !mutex.TryLock() {
-		w.WriteHeader(http.StatusTeapot)
-		return
-	}
-	if index > 0 {
-		v, ok := r.Header["Timing-Auth"]
-		if !ok || !validHeader(v) {
-			fmt.Println(v, ok)
-			w.WriteHeader(http.StatusUnauthorized)
-			mutex.Unlock()
-			return
-		}
-	}
-	w.Write(buildResponseData())
-	mutex.Unlock()
-}
-
 func validHeader(headers []string) bool {
 	for _, token := range headers {
 		if token == fmt.Sprintf("%x", sha256.Sum256([]byte(instructions[index-1]))) {
@@ -193,15 +217,3 @@ func timingService(s *sync.Mutex, index *int) {
 		}
 	}
 }
-
-// Only accept requests during 1 second intervals that open on a decay cycle
-
-// A part of the instructions can be GET requested at each interval
-
-// Each GET returns a key needed for the next GET
-
-// Instructions are base64 encoded
-
-// Once decrypted they contain a JWT signing key and the scoreboard route
-
-// User passes their discord handle as a claim in JWT signed by correct key
