@@ -51,6 +51,10 @@ func main() {
 }
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 	message := `
 		This server, like most servers, operates thanks to the diligence of tiny green 
 		elves shuffling papers about inside a bleak industrial datacenter.  Today the 
