@@ -65,7 +65,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 		the party allow them. Today may be a day of leisure but they still strongly
 		believe in doing things the right way, one thing following another.
 
-		Your challenge is to add your name to the /scoreboard.  
+		Your challenge is to follow the /instructions and add your name to the /scoreboard.  
 		Your scope is this domain.`
 	w.Write([]byte(message))
 	log.Println("served /: ", r.RemoteAddr)
