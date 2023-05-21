@@ -44,7 +44,7 @@ func main() {
 	http.HandleFunc("/scoreboard", handleScoreboard)
 	http.HandleFunc("/scoreboard/add", handleScoreboardAdd)
 
-	err := http.ListenAndServe(":80", nil)
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Fatalf("Serving http: %s", err)
 	}
