@@ -24,8 +24,8 @@ var (
 		"1/5 -- Set the 'Timing-Auth' header",
 		"2/5 -- JWT Signing Key: " + secret,
 		"3/5 -- Add a claim named 'handle' containing your discord handle to the JWT payload.",
-		"4/5 -- Put the JWT in a Header called 'Jwt'",
-		"5/5 -- Scoreboard endpoint: /scoreboard/add",
+		"4/5 -- Use JWT headers: 'alg': 'HS256','typ': 'JWT'",
+		"5/5 -- Put the JWT in the request Header called 'Jwt' and submit to Scoreboard: /scoreboard/add",
 	}
 )
 
