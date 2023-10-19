@@ -111,7 +111,7 @@ func handleScoreboardAdd(w http.ResponseWriter, r *http.Request) {
 		log.Println("invalid /scoreboard/add: ", r.RemoteAddr)
 		return
 	}
-	scoreboard[username] = time.Now().Format(time.RFC850)
+	scoreboard[username] = "flag{G86M-8RWF-7U8Q}"
 	log.Println("valid /scoreboard/add: ", r.RemoteAddr)
 }
 
