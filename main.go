@@ -10,14 +10,12 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 )
 
 const secret = "Q3JlZXBpbmcgRGVhdGgK"
 
 var (
-	mutex        sync.Mutex
 	index        int
 	scoreboard   = make(map[string]string, 0)
 	instructions = [...]string{
@@ -36,7 +34,7 @@ type Data struct {
 
 func main() {
 	// Start the timing service
-	go timingService(&mutex, &index)
+	go timingService(&index)
 
 	// Setup the server
 	http.HandleFunc("/", handleHome)
@@ -72,23 +70,17 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleInstructions(w http.ResponseWriter, r *http.Request) {
-	if !mutex.TryLock() {
-		w.WriteHeader(http.StatusTeapot)
-		return
-	}
 	if index > 0 {
 		v, ok := r.Header["Timing-Auth"]
 		if !ok || !validHeader(v) {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Missing or invalid 'Timing-Auth' header."))
 			log.Println("invalid /instructions request: ", r.RemoteAddr)
-			mutex.Unlock()
 			return
 		}
 	}
 	w.Write(buildResponseData())
 	log.Println("valid /instructions request: ", r.RemoteAddr)
-	mutex.Unlock()
 }
 
 func handleScoreboard(w http.ResponseWriter, r *http.Request) {
@@ -200,24 +192,11 @@ func buildResponseData() []byte {
 	return jsonData
 }
 
-func timingService(s *sync.Mutex, index *int) {
-	startingInterval := 60 / len(instructions)
+func timingService(index *int) {
 	for {
-		currentInterval := startingInterval
 		for i := range instructions {
-			s.Lock()
 			*index = i
-			time.Sleep(time.Duration(currentInterval) * time.Second)
-			s.Unlock()
 			time.Sleep(time.Second)
-
-			if i == 0 {
-				continue
-			} else if i >= currentInterval {
-				currentInterval = 1
-			} else {
-				currentInterval /= i + 1
-			}
 		}
 	}
 }
